@@ -15,7 +15,14 @@ set -euo pipefail
 
 APP_NAME="macowl"
 BUNDLE_ID="com.local.macowl"
-VERSION="1.0.0"
+
+# Version comes from $MACOWL_VERSION, else the latest git tag (v1.2.3 -> 1.2.3),
+# else a sane default. This is what lets CI build the right version per tag.
+VERSION="${MACOWL_VERSION:-}"
+if [ -z "$VERSION" ]; then
+    VERSION="$(git -C "$(dirname "$0")" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+fi
+VERSION="${VERSION:-1.0.0}"
 
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIST_DIR="$SRC_DIR/dist"

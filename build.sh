@@ -12,6 +12,14 @@ set -euo pipefail
 APP_NAME="macowl"
 BUNDLE_ID="com.local.macowl"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Version from $MACOWL_VERSION, else latest git tag (v1.2.3 -> 1.2.3), else default.
+VERSION="${MACOWL_VERSION:-}"
+if [ -z "$VERSION" ]; then
+    VERSION="$(git -C "$SRC_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+fi
+VERSION="${VERSION:-1.0.0}"
+
 BUILD_DIR="$SRC_DIR/build"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
 INSTALL_DIR="/Applications/$APP_NAME.app"
@@ -44,8 +52,8 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>          <string>$APP_NAME</string>
     <key>CFBundleIconFile</key>            <string>$APP_NAME</string>
     <key>CFBundlePackageType</key>         <string>APPL</string>
-    <key>CFBundleVersion</key>             <string>1.0</string>
-    <key>CFBundleShortVersionString</key>  <string>1.0</string>
+    <key>CFBundleVersion</key>             <string>$VERSION</string>
+    <key>CFBundleShortVersionString</key>  <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>      <string>13.0</string>
     <key>LSUIElement</key>                 <true/>
 </dict>

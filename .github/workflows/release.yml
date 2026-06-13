@@ -1,9 +1,17 @@
 name: release
 
+# Two ways to cut a release:
+#   1. Push a version tag:   git tag v1.2.0 && git push origin v1.2.0
+#   2. Run this workflow by hand from the Actions tab and type the version.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (for example 1.2.0)"
+        required: true
 
 permissions:
   contents: write
@@ -16,12 +24,40 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION"
+
+      - name: Create and push the tag (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.v.outputs.tag }}"
+          git push origin "${{ steps.v.outputs.tag }}"
 
       - name: Build the DMG
+        env:
+          MACOWL_VERSION: ${{ steps.v.outputs.version }}
         run: ./build-dmg.sh
 
-      - name: Create the release
+      - name: Publish the GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: macowl ${{ steps.v.outputs.version }}
           files: dist/*.dmg
           generate_release_notes: true
+          fail_on_unmatched_files: true

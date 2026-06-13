@@ -63,6 +63,28 @@ normal sleep.
 - Add a short comment when something is not obvious, especially around the power
   and lid logic.
 
+## Releasing a new version (for maintainers)
+
+Releases are automated. There are two ways to cut one:
+
+1. **Push a version tag.** This is the usual way.
+
+   ```sh
+   git tag v1.2.0
+   git push origin v1.2.0
+   ```
+
+2. **Use the Actions tab.** Open the `release` workflow on GitHub, click
+   *Run workflow*, and type the version (for example `1.2.0`). It will create
+   the tag for you.
+
+Either way, GitHub Actions builds the DMG with the right version baked in and
+publishes it on the Releases page with generated notes. Remember to update
+`CHANGELOG.md` before tagging.
+
+The version string flows from the tag into the build through the
+`MACOWL_VERSION` variable, so you do not edit any version number in the code.
+
 ## Reporting bugs and ideas
 
 Please open an issue. Tell us your macOS version, your Mac model, and the steps

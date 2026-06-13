@@ -173,10 +173,33 @@ is `pmset`, and only for the lid closed state.
 Only for the lid closed state, because that changes a system setting. The other
 states do not need any password.
 
+## How it works, in short
+
+For the curious, here is the simple version:
+
+- For the System and Display states, macowl creates an IOKit power assertion
+  (`kIOPMAssertPreventUserIdleSystemSleep` or
+  `kIOPMAssertPreventUserIdleDisplaySleep`). This is the clean, official way to
+  ask macOS to stay awake. macowl holds only one assertion at a time.
+- For the lid closed state, there is no assertion that works, so macowl flips
+  the `pmset disablesleep` system setting. To stay safe, it remembers this with
+  a marker file and checks it on the next launch.
+
+The whole app is a single Swift file, `main.swift`, and the icon is drawn in
+code in `makeicon.swift`. No frameworks, no dependencies.
+
 ## Contributing
 
 Pull requests and ideas are welcome. Please see
 [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test and send changes.
+
+Please also read the [Code of Conduct](CODE_OF_CONDUCT.md) and the
+[Changelog](CHANGELOG.md).
+
+## Thanks
+
+Thank you for using macowl. It is a small app made with care. If it helps you,
+a star on the repo would make my day.
 
 ## License
 

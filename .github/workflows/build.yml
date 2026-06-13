@@ -1,0 +1,35 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build on macOS
+    runs-on: macos-14
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swiftc --version
+
+      - name: Compile the app
+        run: swiftc -O -o /tmp/macowl main.swift
+
+      - name: Render the icon
+        run: swift makeicon.swift /tmp/macowl.iconset
+
+      - name: Build the DMG
+        run: ./build-dmg.sh
+
+      - name: Upload the DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macowl-dmg
+          path: dist/*.dmg
+          if-no-files-found: error

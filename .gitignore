@@ -1,0 +1,15 @@
+# Build output
+build/
+dist/
+*.dmg
+
+# macOS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode / SwiftPM (in case they get used later)
+.build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/

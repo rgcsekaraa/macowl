@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Show Swift version
         run: swiftc --version
@@ -28,7 +28,7 @@ jobs:
         run: ./build-dmg.sh
 
       - name: Upload the DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macowl-dmg
           path: dist/*.dmg

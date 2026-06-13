@@ -275,9 +275,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        loginItem.target = self
-        loginItem.action = #selector(toggleLoginItem)
-        menu.addItem(loginItem)
+        // "Start at Login" relies on SMAppService, which only exists on
+        // macOS 13+. On older systems we hide the item rather than show a
+        // control that can't work.
+        if #available(macOS 13.0, *) {
+            loginItem.target = self
+            loginItem.action = #selector(toggleLoginItem)
+            menu.addItem(loginItem)
+        }
 
         menu.addItem(.separator())
 
@@ -384,6 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLoginItem() {
+        guard #available(macOS 13.0, *) else { return }
         let service = SMAppService.mainApp
         do {
             if service.status == .enabled {
@@ -508,7 +514,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         displayItem.state = assertions.mode == .systemAndDisplay ? .on : .off
         lidItem.state     = assertions.mode == .lidClosed ? .on : .off
         offItem.isEnabled = assertions.mode.isActive
-        loginItem.state   = SMAppService.mainApp.status == .enabled ? .on : .off
+        if #available(macOS 13.0, *) {
+            loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        }
     }
 }
 

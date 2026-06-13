@@ -13,12 +13,14 @@ enum AwakeMode {
     case off
     case system
     case systemAndDisplay
+    case lidClosed
 
     var title: String {
         switch self {
         case .off:              return "Off"
         case .system:           return "On - System"
         case .systemAndDisplay: return "On - System + Display"
+        case .lidClosed:        return "On - Even with Lid Closed"
         }
     }
 
@@ -31,14 +33,27 @@ enum AwakeMode {
 final class AssertionManager {
     private var assertionID = IOPMAssertionID(0)
     private(set) var mode: AwakeMode = .off
+    private var lidSleepDisabled = false
 
-    func apply(_ newMode: AwakeMode) {
+    /// Applies a mode. Returns false only when the admin prompt needed to
+    /// change the lid setting is cancelled, in which case the mode is left
+    /// untouched.
+    @discardableResult
+    func apply(_ newMode: AwakeMode) -> Bool {
+        let wantLid = (newMode == .lidClosed)
+        if wantLid != lidSleepDisabled {
+            guard AssertionManager.setLidSleepDisabled(wantLid) else {
+                return false
+            }
+            lidSleepDisabled = wantLid
+        }
+
         release()
 
         switch newMode {
         case .off:
             break
-        case .system:
+        case .system, .lidClosed:
             create(type: kIOPMAssertPreventUserIdleSystemSleep,
                    reason: "macowl: keeping the system awake")
         case .systemAndDisplay:
@@ -47,6 +62,20 @@ final class AssertionManager {
         }
 
         mode = newMode
+        return true
+    }
+
+    /// Enables or disables sleep entirely via `pmset disablesleep`, the only
+    /// reliable way to keep the Mac running with the lid shut. Needs admin
+    /// rights, so it runs through an authorization prompt.
+    private static func setLidSleepDisabled(_ disabled: Bool) -> Bool {
+        let value = disabled ? "1" : "0"
+        let source = "do shell script \"/usr/bin/pmset -a disablesleep \(value)\" "
+                   + "with administrator privileges"
+        guard let script = NSAppleScript(source: source) else { return false }
+        var error: NSDictionary?
+        script.executeAndReturnError(&error)
+        return error == nil
     }
 
     private func create(type: String, reason: String) {
@@ -80,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let systemItem   = NSMenuItem(title: "Keep System Awake", action: nil, keyEquivalent: "")
     private let displayItem  = NSMenuItem(title: "Keep System + Display Awake", action: nil, keyEquivalent: "")
+    private let lidItem      = NSMenuItem(title: "Keep Awake with Lid Closed", action: nil, keyEquivalent: "")
     private let offItem      = NSMenuItem(title: "Turn Off - Allow Sleep", action: nil, keyEquivalent: "")
     private let loginItem    = NSMenuItem(title: "Start at Login", action: nil, keyEquivalent: "")
 
@@ -100,6 +130,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         displayItem.target = self
         displayItem.action = #selector(toggleDisplay)
         menu.addItem(displayItem)
+
+        lidItem.target = self
+        lidItem.action = #selector(toggleLid)
+        menu.addItem(lidItem)
 
         offItem.target = self
         offItem.action = #selector(turnOff)
@@ -131,6 +165,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleDisplay() {
         set(mode: assertions.mode == .systemAndDisplay ? .off : .systemAndDisplay)
+    }
+
+    @objc private func toggleLid() {
+        set(mode: assertions.mode == .lidClosed ? .off : .lidClosed)
     }
 
     @objc private func turnOff() {
@@ -254,6 +292,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusHeader.title = "Status: \(assertions.mode.title)"
         systemItem.state  = assertions.mode == .system ? .on : .off
         displayItem.state = assertions.mode == .systemAndDisplay ? .on : .off
+        lidItem.state     = assertions.mode == .lidClosed ? .on : .off
         offItem.isEnabled = assertions.mode.isActive
         loginItem.state   = SMAppService.mainApp.status == .enabled ? .on : .off
     }

@@ -18,12 +18,33 @@ func drawOwl(into rect: NSRect, awake: Bool) {
         NSColor(red: 0.20, green: 0.22, blue: 0.50, alpha: 1),
         NSColor(red: 0.08, green: 0.09, blue: 0.22, alpha: 1)])!.draw(in: bg, angle: -90)
 
-    // Crescent moon (top-right).
-    let mc = NSPoint(x: w*0.74, y: h*0.76), mr = w*0.085
-    NSColor(red: 0.98, green: 0.95, blue: 0.78, alpha: 1).setFill()
-    NSBezierPath(ovalIn: NSRect(x: mc.x-mr, y: mc.y-mr, width: mr*2, height: mr*2)).fill()
-    NSColor(red: 0.13, green: 0.14, blue: 0.32, alpha: 1).setFill()
-    NSBezierPath(ovalIn: NSRect(x: mc.x-mr*0.55, y: mc.y-mr*0.7, width: mr*2, height: mr*2)).fill()
+    // Crescent moon (top-right). Drawn as a clip of (moon disc) minus (cut
+    // disc) so the gap is genuinely the sky showing through. The earlier
+    // version painted the gap with a fixed colour, which did not match the
+    // gradient and left an ugly dark dot instead of a crescent.
+    let moonColor = NSColor(red: 0.98, green: 0.95, blue: 0.78, alpha: 1)
+    let mc = NSPoint(x: w*0.79, y: h*0.79), mr = w*0.078
+    let moonRect = NSRect(x: mc.x-mr, y: mc.y-mr, width: mr*2, height: mr*2)
+    let cutRect = NSRect(x: mc.x-mr+mr*0.62, y: mc.y-mr+mr*0.10, width: mr*2, height: mr*2)
+    let ctx = NSGraphicsContext.current!
+    ctx.saveGraphicsState()
+    NSBezierPath(ovalIn: moonRect).addClip()
+    let mask = NSBezierPath(rect: bgRect)
+    mask.appendOval(in: cutRect)
+    mask.windingRule = .evenOdd
+    mask.addClip()
+    moonColor.setFill(); NSBezierPath(rect: moonRect).fill()
+    ctx.restoreGraphicsState()
+
+    // A few small stars to balance the night sky.
+    moonColor.setFill()
+    func star(_ fx: CGFloat, _ fy: CGFloat, _ r: CGFloat) {
+        NSBezierPath(ovalIn: NSRect(x: w*fx-r, y: h*fy-r, width: r*2, height: r*2)).fill()
+    }
+    star(0.20, 0.84, w*0.011)
+    star(0.30, 0.72, w*0.008)
+    star(0.86, 0.62, w*0.009)
+    star(0.66, 0.86, w*0.007)
 
     let amber = NSColor(red: 0.86, green: 0.60, blue: 0.24, alpha: 1)
     let amberDark = NSColor(red: 0.62, green: 0.40, blue: 0.15, alpha: 1)

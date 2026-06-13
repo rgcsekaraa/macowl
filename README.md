@@ -19,6 +19,40 @@ sleep. When the owl is sleeping (eyes closed), everything is normal.
 That is the whole idea. No settings window, no Dock icon, nothing heavy. Just
 one owl in the menu bar.
 
+## What it looks like
+
+<p align="center">
+  <img src="docs/menu-preview.png" alt="macowl menu showing the four modes, with lid-closed mode active" width="640">
+</p>
+
+One click on the owl gives you everything: the current status, the four modes,
+Start at Login, and Quit. A tick shows which mode is on, and the owl opens its
+eyes whenever your Mac is being kept awake.
+
+## Made for developers who keep agents and jobs running
+
+This is the main reason the **Even with Lid Closed** mode exists.
+
+More and more of us run things that must keep going even after we shut the
+laptop and walk away:
+
+- **AI coding agents** grinding through a long task while you step out.
+- **Long builds, test suites and local CI runs** that take a while.
+- **Training runs, data jobs, big uploads or downloads.**
+- **Servers, dev tunnels or background services** you are hosting from your Mac.
+- **SSH sessions** into your machine that must stay reachable.
+
+Normally, closing a MacBook lid puts everything to sleep, and your agent or job
+just stops dead. With macowl set to **On - Even with Lid Closed**, you can shut
+the lid, drop the laptop in your bag, and the work keeps running. The screen is
+off (the lid is closed, after all), but the CPU, the network and all your
+processes stay alive.
+
+Turn it on before you close the lid, and turn it off when you are done so your
+Mac can sleep and save battery again. The full details, including the one-time
+admin password and how macowl keeps you safe, are in
+[Keeping the Mac awake with the lid closed](#keeping-the-mac-awake-with-the-lid-closed).
+
 ## Why I made this
 
 Many times my Mac goes to sleep when I do not want it to. For example, a long
@@ -30,24 +64,37 @@ So macowl does exactly that, and it does it the clean way. It uses the proper
 macOS power assertions through IOKit. It does not run any extra `caffeinate`
 process in the background.
 
-## What it can do
+## The modes, and when to use each
 
-macowl has four simple states. You pick one from the menu.
+macowl has four states. Click the owl and pick one. It takes effect right away
+and a tick appears next to the active mode.
 
-| State | What happens |
-|-------|--------------|
-| **Off** | Normal. Your Mac sleeps like usual. The owl is sleeping. |
-| **On - System** | The Mac will not sleep, but the screen can still dim and switch off. |
-| **On - System + Display** | The whole Mac and the screen both stay awake. |
-| **On - Even with Lid Closed** | The Mac keeps running even after you close the lid. |
+| Mode | What it does | When to use it |
+|------|--------------|----------------|
+| **Off** (Turn Off - Allow Sleep) | Normal sleep. The owl closes its eyes. | When you are done and want your Mac to behave normally again. |
+| **On - System** | The Mac will not idle-sleep, but the screen can still dim and switch off. | Downloads, builds or music where you do not need the screen on. Saves the most battery of the three "on" modes. |
+| **On - System + Display** | The Mac and the screen both stay fully awake. | Presentations, dashboards, reading, or watching something without touching the trackpad. |
+| **On - Even with Lid Closed** | The Mac keeps running even after you shut the lid. | Agents, long jobs and servers that must keep going while the laptop is closed. Needs your admin password (see [below](#keeping-the-mac-awake-with-the-lid-closed)). |
 
-The last one is the special one. Please read the
-[lid closed section](#keeping-the-mac-awake-with-the-lid-closed) below before
-using it, because it asks for your admin password and it changes a system
-setting.
+Only one mode is active at a time. Picking a new mode switches to it. Picking
+the active mode again, or choosing **Turn Off - Allow Sleep**, returns you to
+normal sleep.
 
-There is also a **Start at Login** option, so macowl can open by itself every
-time you switch on your Mac.
+### How to use it, step by step
+
+1. Click the **owl icon** in the menu bar (top right of your screen).
+2. The first line shows the current **Status**.
+3. Click the mode you want. A tick marks the active mode and the owl opens its
+   eyes.
+4. For **Even with Lid Closed** only, type your admin password when macOS asks.
+5. When you are finished, click **Turn Off - Allow Sleep** so your Mac can sleep
+   normally again and save battery.
+
+### Start at Login
+
+Turn on **Start at Login** and macowl opens by itself every time you log in, so
+the owl is always there when you need it. Turn it off any time from the same
+menu.
 
 ## Installing
 
@@ -104,18 +151,11 @@ setting is back to normal, run this once:
 sudo pmset -a disablesleep 0
 ```
 
-## Using it
+## Tip
 
-Click the owl in the menu bar. You will see a small menu:
-
-- A line at the top showing the current status.
-- The four states you can pick.
-- **Start at Login** to open macowl automatically.
-- **Quit macowl** to close it.
-
-Pick a state and you are done. The owl in the menu bar will open its eyes when
-a keep-awake state is on, and close them when it is off. You can also hover on
-the owl to see the current status in a tooltip.
+You do not have to open the menu to check the state. The owl itself tells you:
+eyes open means a keep-awake mode is on, eyes closed means normal sleep. Hover
+on the owl to see the exact status in a tooltip.
 
 ## Keeping the Mac awake with the lid closed
 

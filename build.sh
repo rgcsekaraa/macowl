@@ -14,10 +14,12 @@ BUNDLE_ID="com.local.macowl"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Version from $MACOWL_VERSION, else latest git tag (v1.2.3 -> 1.2.3), else default.
+# The git lookup must not be fatal under `set -e`, hence the `|| true`.
 VERSION="${MACOWL_VERSION:-}"
 if [ -z "$VERSION" ]; then
-    VERSION="$(git -C "$SRC_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+    VERSION="$(git -C "$SRC_DIR" describe --tags --abbrev=0 2>/dev/null || true)"
 fi
+VERSION="${VERSION#v}"
 VERSION="${VERSION:-1.0.0}"
 
 BUILD_DIR="$SRC_DIR/build"

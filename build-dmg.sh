@@ -18,10 +18,12 @@ BUNDLE_ID="com.local.macowl"
 
 # Version comes from $MACOWL_VERSION, else the latest git tag (v1.2.3 -> 1.2.3),
 # else a sane default. This is what lets CI build the right version per tag.
+# The git lookup must not be fatal (no tags is fine), hence the `|| true`.
 VERSION="${MACOWL_VERSION:-}"
 if [ -z "$VERSION" ]; then
-    VERSION="$(git -C "$(dirname "$0")" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+    VERSION="$(git -C "$(dirname "$0")" describe --tags --abbrev=0 2>/dev/null || true)"
 fi
+VERSION="${VERSION#v}"
 VERSION="${VERSION:-1.0.0}"
 
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"

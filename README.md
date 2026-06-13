@@ -77,6 +77,33 @@ cd macowl
 `build.sh` compiles the app, makes the icon, installs it into `/Applications`
 and opens it. That is all.
 
+### Making a DMG to share
+
+If you want to make your own DMG (for example to give it to a friend), run:
+
+```sh
+./build-dmg.sh
+```
+
+This builds the app into the `dist` folder and creates `dist/macowl-1.0.0.dmg`.
+It does not touch `/Applications` or your running copy.
+
+## Uninstalling
+
+macowl is just one app, so removing it is easy.
+
+1. Click the owl and choose **Quit macowl**.
+2. If you turned on Start at Login, turn it off first from the menu, or remove
+   macowl from **System Settings > General > Login Items**.
+3. Move **macowl** from your **Applications** folder to the Trash.
+
+If you ever used the lid closed state and want to be fully sure your sleep
+setting is back to normal, run this once:
+
+```sh
+sudo pmset -a disablesleep 0
+```
+
 ## Using it
 
 Click the owl in the menu bar. You will see a small menu:

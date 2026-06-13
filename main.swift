@@ -5,6 +5,7 @@
 
 import AppKit
 import IOKit.pwr_mgt
+import ServiceManagement
 
 // MARK: - Awake mode
 
@@ -80,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let systemItem   = NSMenuItem(title: "Keep System Awake", action: nil, keyEquivalent: "")
     private let displayItem  = NSMenuItem(title: "Keep System + Display Awake", action: nil, keyEquivalent: "")
     private let offItem      = NSMenuItem(title: "Turn Off - Allow Sleep", action: nil, keyEquivalent: "")
+    private let loginItem    = NSMenuItem(title: "Start at Login", action: nil, keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -102,6 +104,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         offItem.target = self
         offItem.action = #selector(turnOff)
         menu.addItem(offItem)
+
+        menu.addItem(.separator())
+
+        loginItem.target = self
+        loginItem.action = #selector(toggleLoginItem)
+        menu.addItem(loginItem)
 
         menu.addItem(.separator())
 
@@ -132,6 +140,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func set(mode: AwakeMode) {
         assertions.apply(mode)
         refreshIcon()
+        refreshMenu()
+    }
+
+    @objc private func toggleLoginItem() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Couldn't update Login Items"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
         refreshMenu()
     }
 
@@ -230,6 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         systemItem.state  = assertions.mode == .system ? .on : .off
         displayItem.state = assertions.mode == .systemAndDisplay ? .on : .off
         offItem.isEnabled = assertions.mode.isActive
+        loginItem.state   = SMAppService.mainApp.status == .enabled ? .on : .off
     }
 }
 

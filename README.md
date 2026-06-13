@@ -6,6 +6,12 @@
 
 <p align="center">A tiny owl in your menu bar that keeps your Mac awake.</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue" alt="Platform macOS 13+">
+  <img src="https://img.shields.io/badge/made%20with-Swift-orange" alt="Made with Swift">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+</p>
+
 A tiny menu bar app that keeps your Mac awake. It sits quietly in the menu bar
 as a small owl. When the owl is awake (eyes open), your Mac will not go to
 sleep. When the owl is sleeping (eyes closed), everything is normal.

@@ -1,4 +1,10 @@
-# macowl
+<p align="center">
+  <img src="docs/icon.png" alt="macowl icon" width="160" height="160">
+</p>
+
+<h1 align="center">macowl</h1>
+
+<p align="center">A tiny owl in your menu bar that keeps your Mac awake.</p>
 
 A tiny menu bar app that keeps your Mac awake. It sits quietly in the menu bar
 as a small owl. When the owl is awake (eyes open), your Mac will not go to

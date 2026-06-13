@@ -1,7 +1,21 @@
 // macowl - a tiny menu bar app that keeps your Mac awake.
 //
 // It lives only in the menu bar (no Dock icon) and uses IOKit power
-// assertions instead of spawning the `caffeinate` tool. Build with build.sh.
+// assertions instead of spawning the `caffeinate` tool. There are four
+// states:
+//
+//   Off                  - normal sleep is allowed.
+//   On - System          - the Mac will not idle sleep, the display may dim.
+//   On - System+Display  - the whole machine and the screen stay awake.
+//   On - Lid Closed      - the Mac keeps running even when the lid is shut.
+//
+// The lid-closed state is special. No IOKit assertion can stop the sleep
+// that happens when you close the lid, so it uses the system wide
+// `pmset disablesleep` setting, which needs an admin password. Because that
+// setting survives a crash, macowl keeps a small marker file and reconciles
+// the state on the next launch so your Mac never gets stuck awake by mistake.
+//
+// Build with build.sh.
 
 import AppKit
 import IOKit.pwr_mgt
@@ -25,27 +39,146 @@ enum AwakeMode {
     }
 
     var isActive: Bool { self != .off }
+
+    /// Whether this mode needs the system wide lid-close setting turned on.
+    var needsLidSleepDisabled: Bool { self == .lidClosed }
+}
+
+// MARK: - Lid sleep control
+
+/// Controls whether the Mac is allowed to sleep when the lid is shut.
+///
+/// macOS has no power assertion for this, so the only reliable lever is the
+/// system wide `pmset disablesleep` flag. Changing it needs admin rights, so
+/// every change shows an authorization prompt. A marker file records when
+/// macowl was the one that turned it on, which lets the app detect a leftover
+/// after a crash and offer to undo it.
+enum LidSleep {
+
+    /// The outcome of trying to change the setting.
+    enum ChangeResult {
+        case changed
+        case cancelled          // the user dismissed the password prompt
+        case failed(String)     // anything else went wrong
+    }
+
+    /// Location of the marker file under Application Support.
+    private static let markerURL: URL = {
+        let support = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let folder = support.appendingPathComponent("macowl", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appendingPathComponent("lid-sleep-disabled.marker")
+    }()
+
+    /// True when macowl's marker file is present.
+    static var markerExists: Bool {
+        FileManager.default.fileExists(atPath: markerURL.path)
+    }
+
+    /// Reads the live system setting. No admin rights are needed for this.
+    /// Returns nil only if `pmset` could not be run at all.
+    static func isDisabledSystemWide() -> Bool? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+        task.arguments = ["-g"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        do {
+            try task.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        guard let output = String(data: data, encoding: .utf8) else { return nil }
+        for line in output.split(separator: "\n") where line.contains("SleepDisabled") {
+            // The line looks like " SleepDisabled  1". When the value is 0 the
+            // line is usually absent, which we treat as "not disabled" below.
+            return line.contains("1")
+        }
+        return false
+    }
+
+    /// True when macowl believes it is the owner of an active lid setting,
+    /// that is the marker is present and the system setting is really on.
+    static func isOwnedAndActive() -> Bool {
+        markerExists && (isDisabledSystemWide() ?? false)
+    }
+
+    /// Turns the system wide setting on or off through an admin prompt and
+    /// keeps the marker file in sync with the request.
+    @discardableResult
+    static func set(_ disabled: Bool) -> ChangeResult {
+        let value = disabled ? "1" : "0"
+        let command = "/usr/bin/pmset -a disablesleep \(value)"
+        let source = "do shell script \"\(command)\" with administrator privileges"
+
+        guard let script = NSAppleScript(source: source) else {
+            return .failed("Could not build the authorization request.")
+        }
+
+        var errorInfo: NSDictionary?
+        script.executeAndReturnError(&errorInfo)
+
+        if let errorInfo = errorInfo {
+            let code = (errorInfo["NSAppleScriptErrorNumber"] as? Int) ?? 0
+            if code == -128 {
+                return .cancelled        // user cancelled the prompt
+            }
+            let message = (errorInfo["NSAppleScriptErrorMessage"] as? String)
+                ?? "The system did not allow the change."
+            return .failed(message)
+        }
+
+        if disabled {
+            try? Data().write(to: markerURL)
+        } else {
+            clearMarker()
+        }
+        return .changed
+    }
+
+    /// Removes the marker file without touching the system setting.
+    static func clearMarker() {
+        try? FileManager.default.removeItem(at: markerURL)
+    }
 }
 
 // MARK: - Power assertion manager
 
-/// Holds at most one IOKit power assertion at a time.
+/// Holds at most one IOKit power assertion at a time and, for the lid-closed
+/// mode, drives the system wide lid setting through `LidSleep`.
 final class AssertionManager {
+
+    /// The outcome of applying a mode.
+    enum ApplyResult {
+        case ok
+        case cancelled
+        case failed(String)
+    }
+
     private var assertionID = IOPMAssertionID(0)
     private(set) var mode: AwakeMode = .off
-    private var lidSleepDisabled = false
 
-    /// Applies a mode. Returns false only when the admin prompt needed to
-    /// change the lid setting is cancelled, in which case the mode is left
-    /// untouched.
+    /// Applies a mode. The lid setting is handled first because it is the only
+    /// step that can be refused, and we do not want to half apply a mode.
     @discardableResult
-    func apply(_ newMode: AwakeMode) -> Bool {
-        let wantLid = (newMode == .lidClosed)
-        if wantLid != lidSleepDisabled {
-            guard AssertionManager.setLidSleepDisabled(wantLid) else {
-                return false
+    func apply(_ newMode: AwakeMode) -> ApplyResult {
+        let wantLid = newMode.needsLidSleepDisabled
+        let haveLid = LidSleep.isOwnedAndActive()
+
+        if wantLid != haveLid {
+            switch LidSleep.set(wantLid) {
+            case .changed:
+                break
+            case .cancelled:
+                return .cancelled          // leave the current mode untouched
+            case .failed(let message):
+                return .failed(message)
             }
-            lidSleepDisabled = wantLid
         }
 
         release()
@@ -54,6 +187,9 @@ final class AssertionManager {
         case .off:
             break
         case .system, .lidClosed:
+            // For lidClosed the pmset flag already blocks every kind of sleep,
+            // so this assertion simply makes the intent explicit and survives
+            // if the flag is ever cleared from under us.
             create(type: kIOPMAssertPreventUserIdleSystemSleep,
                    reason: "macowl: keeping the system awake")
         case .systemAndDisplay:
@@ -62,20 +198,16 @@ final class AssertionManager {
         }
 
         mode = newMode
-        return true
+        return .ok
     }
 
-    /// Enables or disables sleep entirely via `pmset disablesleep`, the only
-    /// reliable way to keep the Mac running with the lid shut. Needs admin
-    /// rights, so it runs through an authorization prompt.
-    private static func setLidSleepDisabled(_ disabled: Bool) -> Bool {
-        let value = disabled ? "1" : "0"
-        let source = "do shell script \"/usr/bin/pmset -a disablesleep \(value)\" "
-                   + "with administrator privileges"
-        guard let script = NSAppleScript(source: source) else { return false }
-        var error: NSDictionary?
-        script.executeAndReturnError(&error)
-        return error == nil
+    /// Adopts an already active lid setting that was found at launch, without
+    /// prompting for a password again.
+    func adoptLidMode() {
+        release()
+        create(type: kIOPMAssertPreventUserIdleSystemSleep,
+               reason: "macowl: keeping the system awake")
+        mode = .lidClosed
     }
 
     private func create(type: String, reason: String) {
@@ -106,6 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let assertions = AssertionManager()
 
+    // Menu items we keep around so we can update their state.
     private let statusHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let systemItem   = NSMenuItem(title: "Keep System Awake", action: nil, keyEquivalent: "")
     private let displayItem  = NSMenuItem(title: "Keep System + Display Awake", action: nil, keyEquivalent: "")
@@ -153,8 +286,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusItem.menu = menu
 
+        reconcileLeftoverLidState()
+
         refreshIcon()
         refreshMenu()
+    }
+
+    // MARK: Startup safety net
+
+    /// If a previous run left the lid setting on (for example after a crash or
+    /// a force quit), ask the user whether to keep the Mac awake or restore
+    /// normal sleep. This is what stops the Mac from being stuck awake forever.
+    private func reconcileLeftoverLidState() {
+        guard LidSleep.markerExists else { return }
+
+        // The marker is here, so a past run turned the setting on. Check if it
+        // is still really on.
+        guard LidSleep.isDisabledSystemWide() ?? false else {
+            // Something already cleared it, so just drop the stale marker.
+            LidSleep.clearMarker()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "macowl did not quit cleanly last time"
+        alert.informativeText = """
+        Your Mac is still set to stay awake even with the lid closed. \
+        Do you want to keep it awake, or restore normal sleep?
+        """
+        alert.addButton(withTitle: "Restore Normal Sleep")
+        alert.addButton(withTitle: "Keep Awake")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            // Restore normal sleep. This needs the admin prompt once more.
+            switch assertions.apply(.off) {
+            case .ok, .cancelled:
+                break
+            case .failed(let message):
+                showError("Couldn't restore normal sleep", message)
+            }
+        } else {
+            // Keep the Mac awake and show the matching state in the menu,
+            // without asking for the password again.
+            assertions.adoptLidMode()
+        }
     }
 
     // MARK: Actions
@@ -176,7 +351,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func set(mode: AwakeMode) {
-        assertions.apply(mode)
+        switch assertions.apply(mode) {
+        case .ok, .cancelled:
+            // On cancel the mode is unchanged, the refresh below just keeps the
+            // menu honest.
+            break
+        case .failed(let message):
+            showError("Couldn't change the lid setting", message)
+        }
         refreshIcon()
         refreshMenu()
     }
@@ -190,23 +372,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try service.register()
             }
         } catch {
-            let alert = NSAlert()
-            alert.messageText = "Couldn't update Login Items"
-            alert.informativeText = error.localizedDescription
-            alert.runModal()
+            showError("Couldn't update Login Items", error.localizedDescription)
         }
         refreshMenu()
     }
 
     @objc private func quit() {
+        // Make sure we never leave the Mac stuck awake.
         assertions.apply(.off)
         NSApp.terminate(nil)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Last line of defence for terminations that did not go through quit().
+        if assertions.mode.needsLidSleepDisabled || LidSleep.isOwnedAndActive() {
+            assertions.apply(.off)
+        }
     }
 
     // MARK: UI updates
 
     func menuWillOpen(_ menu: NSMenu) {
         refreshMenu()
+    }
+
+    private func showError(_ title: String, _ message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.runModal()
     }
 
     private func refreshIcon() {

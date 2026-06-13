@@ -19,6 +19,13 @@ sleep. When the owl is sleeping (eyes closed), everything is normal.
 That is the whole idea. No settings window, no Dock icon, nothing heavy. Just
 one owl in the menu bar.
 
+macowl is a free and open source way to **keep your Mac awake** and **stop your
+MacBook from sleeping when you close the lid**. If you have looked for a simple
+**caffeine app for Mac**, or an **Amphetamine, Caffeine, KeepingYouAwake or
+Lungo alternative**, macowl does the same job with one extra trick: it can keep
+the system running with the **lid closed (clamshell mode)**, which is perfect
+for long jobs and background agents.
+
 ## What it looks like
 
 <p align="center">
@@ -106,9 +113,26 @@ menu.
 4. Open it. Look for the owl in your menu bar at the top right.
 
 Because the app is signed only with an ad-hoc signature (not a paid Apple
-developer certificate), macOS may show a warning the first time. If that
-happens, right click the app and choose **Open**, then click **Open** again.
-You only need to do this once.
+developer certificate), macOS may show a warning the first time, something like
+"macowl is from an unidentified developer" or "Apple could not verify it is
+free of malware". This is expected for a small open source app that is not yet
+notarized. To open it: **right click (or Control click) the app, choose Open,
+then click Open again** in the dialog. You only have to do this once.
+
+> ### Want to help remove that warning?
+>
+> The only reason macOS shows the warning is that macowl is not signed and
+> notarized with a paid **Apple Developer account**, which costs 99 USD a year.
+>
+> If you like macowl and find it useful, please consider
+> **[sponsoring the project](https://github.com/sponsors/rgcsekaraa)**. The money
+> goes directly towards:
+>
+> - an **Apple Developer account**, so future releases are properly signed and
+>   notarized and this warning goes away for everyone, and
+> - **ongoing maintenance** to keep macowl working on new versions of macOS.
+>
+> Even a small one-time sponsorship genuinely helps. Thank you.
 
 ### Building it yourself
 

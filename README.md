@@ -84,6 +84,67 @@ Pick a state and you are done. The owl in the menu bar will open its eyes when
 a keep-awake state is on, and close them when it is off. You can also hover on
 the owl to see the current status in a tooltip.
 
+## Keeping the Mac awake with the lid closed
+
+This one is different from the other states, so please read this part.
+
+When you close the lid of a MacBook, macOS goes to sleep. There is no power
+assertion that can stop this. The only reliable way to keep the Mac running
+with the lid shut is the system setting `pmset disablesleep`. macowl uses this
+setting for the **On - Even with Lid Closed** state.
+
+A few important points:
+
+1. **It asks for your admin password.** Turning this state on and off changes a
+   system setting, so macOS asks for your password each time. This is normal and
+   there is no way around it without installing a background helper tool, which
+   macowl does not do on purpose, to keep things simple and safe.
+
+2. **It stops all sleep, not only lid sleep.** While this state is on, the Mac
+   will not sleep at all, even when the lid is open and idle. That is the nature
+   of the system setting.
+
+3. **The screen will be off when the lid is closed.** This is obvious, but worth
+   saying. The lid is shut, so the screen is off. But the CPU, the network, your
+   downloads and everything else keep running.
+
+4. **macowl cleans up after itself.** When you turn this state off, or quit
+   macowl, the setting is put back to normal. If macowl is force quit or crashes
+   while this state is on, the setting can stay on. To handle this, macowl keeps
+   a small marker file and checks it the next time it opens. If it finds that the
+   Mac was left awake by mistake, it will ask you whether to keep it awake or to
+   restore normal sleep. So your Mac will not get stuck awake forever.
+
+If you ever want to reset this setting by hand, you can run this in the
+terminal:
+
+```sh
+sudo pmset -a disablesleep 0
+```
+
+## Questions people ask
+
+**Does this drain my battery?**
+Yes, keeping the Mac awake uses more power than letting it sleep, especially the
+lid closed state. Use it when you need it and turn it off after.
+
+**Will it stop my screen saver also?**
+The display states stop the screen from sleeping, so the screen saver may not
+start. The plain System state does not touch the display.
+
+**Does it run any background process like caffeinate?**
+No. macowl uses IOKit power assertions directly. The only system command it runs
+is `pmset`, and only for the lid closed state.
+
+**Why does it want my password?**
+Only for the lid closed state, because that changes a system setting. The other
+states do not need any password.
+
+## Contributing
+
+Pull requests and ideas are welcome. Please see
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test and send changes.
+
 ## License
 
 macowl is open source under the [MIT license](LICENSE). You are free to use it,

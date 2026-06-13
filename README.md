@@ -7,7 +7,7 @@
 <p align="center">A tiny owl in your menu bar that keeps your Mac awake.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue" alt="Platform macOS 13+">
+  <img src="https://img.shields.io/badge/platform-macOS%2011%2B-blue" alt="Platform macOS 11+">
   <img src="https://img.shields.io/badge/made%20with-Swift-orange" alt="Made with Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>

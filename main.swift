@@ -237,6 +237,7 @@ final class AssertionManager {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let assertions = AssertionManager()
+    private var signalSources: [DispatchSourceSignal] = []
 
     // Menu items we keep around so we can update their state.
     private let statusHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -286,10 +287,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusItem.menu = menu
 
+        installSignalHandlers()
         reconcileLeftoverLidState()
 
         refreshIcon()
         refreshMenu()
+    }
+
+    // MARK: Signals
+
+    /// Restore normal sleep on a graceful termination signal. A hard kill
+    /// (SIGKILL) cannot be caught, but the launch reconciliation above covers
+    /// that case.
+    private func installSignalHandlers() {
+        for sig in [SIGTERM, SIGINT, SIGHUP] {
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+            source.setEventHandler { [weak self] in
+                self?.assertions.apply(.off)
+                NSApp.terminate(nil)
+            }
+            source.resume()
+            signalSources.append(source)
+        }
     }
 
     // MARK: Startup safety net
